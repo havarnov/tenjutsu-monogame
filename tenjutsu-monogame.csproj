@@ -1,0 +1,28 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net9.0</TargetFramework>
+    <RootNamespace>TenJutsu</RootNamespace>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="LDtkMonogame" Version="1.8.0" />
+    <PackageReference Include="LDtkMonogame.ContentPipeline" Version="1.8.0" />
+    <PackageReference Include="MonoGame.Aseprite" Version="6.3.0" />
+    <PackageReference Include="MonoGame.Content.Builder.Task" Version="3.8.4" />
+    <PackageReference Include="MonoGame.Framework.DesktopGL" Version="3.8.4" />
+  </ItemGroup>
+
+  <Target Name="Codegen" BeforeTargets="BeforeBuild">
+    <Exec Command="dotnet ldtkgen -n 'LDtkTypes' -i ./tenjutsu.ldtk -o ./LDtkTypes/ --LevelClassName LevelDataName --PointAsVector2" />
+  </Target>
+
+  <ItemGroup>
+    <Content Include="./tenjutsu.ldtk" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="Content/*" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>
