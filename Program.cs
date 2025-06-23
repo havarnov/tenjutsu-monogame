@@ -1,4 +1,5 @@
-﻿using AsepriteDotNet.Aseprite;
+﻿using System.Runtime.InteropServices.ComTypes;
+using AsepriteDotNet.Aseprite;
 using AsepriteDotNet.Aseprite.Types;
 using LDtk;
 using LDtkTypes;
@@ -7,6 +8,7 @@ using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using MonoGame.Aseprite;
 using TenJutsu;
+using NinePatchSlice = AsepriteDotNet.NinePatchSlice;
 
 using var game = new TenJutsuGame();
 game.Run();
@@ -61,23 +63,52 @@ public class TenJutsuGame : Game
         var file = Content.Load<AsepriteFile>("entities");
         var spriteSheet = file.CreateSpriteSheet(GraphicsDevice, onlyVisibleLayers: true);
 
+        var tilesFile = Content.Load<AsepriteFile>("tiles");
+        var atlas = tilesFile.CreateTextureAtlas(
+            GraphicsDevice,
+            layers: tilesFile.Layers.ToArray().Select(l => l.Name).ToList());
+
+        var doors = currentLevel.GetEntities<LDtkTypes.Door>();
+        foreach (var door in doors)
+        {
+            var newDoor = new Door(door, atlas.GetRegion("tiles 0"));
+            newDoor.Load(spriteBatch);
+            entities.Add(newDoor);
+        }
+
         player.Load(spriteSheet, spriteBatch);
     }
 
     protected override void Update(GameTime gameTime)
     {
         var collisions = currentLevel.GetIntGrid("Collisions");
+
+        var oldPosition = player.CurrentPosition;
+
         player.Update(gameTime, collisions);
+
+        foreach (var entity in entities)
+        {
+            entity.Update(gameTime, collisions);
+
+            if (entity.HitBox is { } hitBox)
+            {
+                if (hitBox.Intersects(player.HitBox))
+                {
+                    player.CurrentPosition = oldPosition;
+                }
+            }
+        }
 
         var cameraMinX = currentLevel.WorldX + (GraphicsDevice.Viewport.Width / 2f / pixelScale);
         var cameraMaxX = currentLevel.WorldX + currentLevel.PxWid - (GraphicsDevice.Viewport.Width / 2f / pixelScale);
         var cameraPosition = new Vector2(
-            cameraMinX > player.CurrentInitialPosition.X
+            cameraMinX > player.CurrentPosition.X
                 ? cameraMinX
-                : cameraMaxX < player.CurrentInitialPosition.X
+                : cameraMaxX < player.CurrentPosition.X
                     ? cameraMaxX
-                    : player.CurrentInitialPosition.X,
-            currentLevel.WorldY > player.CurrentInitialPosition.Y ? currentLevel.WorldY : player.CurrentInitialPosition.Y);
+                    : player.CurrentPosition.X,
+            currentLevel.WorldY > player.CurrentPosition.Y ? currentLevel.WorldY : player.CurrentPosition.Y);
         camera.Position = cameraPosition;
         camera.Zoom = pixelScale;
         camera.Update();
@@ -100,6 +131,11 @@ public class TenJutsuGame : Game
 
         spriteBatch.Begin(SpriteSortMode.FrontToBack, null, SamplerState.PointClamp, transformMatrix: camera.Transform);
 
+        foreach (var entity in entities)
+        {
+            entity.Draw(gameTime);
+        }
+
         player.Draw(gameTime);
 
         spriteBatch.End();
@@ -110,15 +146,10 @@ public class TenJutsuGame : Game
 
 internal abstract class Entity
 {
-    private SpriteBatch _spriteBatch = null!;
-    private AsepriteSlice slice = null!;
+    public virtual Rectangle? HitBox { get; }
 
-    public virtual void Load(AsepriteSlice slice, SpriteBatch spriteBatch)
+    public virtual void Load(SpriteBatch spriteBatch)
     {
-        this.slice = slice;
-        // _spriteBatch = spriteBatch;
-        // idle = spriteSheet.CreateAnimatedSprite("kIdle");
-        // idle.Play();
     }
 
     public virtual void Update(GameTime gameTime, LDtkIntGrid collisions)
@@ -130,19 +161,33 @@ internal abstract class Entity
     }
 }
 
-// internal class Door(Vector2 initialPosition) : Entity
-// {
-//     public override void Load(AsepriteSlice slice, SpriteBatch spriteBatch)
-//     {
-//     }
-// }
+internal class Door(LDtkTypes.Door door, TextureRegion region) : Entity
+{
+    private SpriteBatch _spriteBatch = null!;
+    private NineSliceSprite _nineSliceSprite = null!;
+    private Vector2 _initialPosition = door.Position;
+    public override Rectangle? HitBox => new Rectangle(_initialPosition.ToPoint(), door.Size.ToPoint());
 
-internal class Player(Vector2 initialPosition) : Entity
+    public override void Load(SpriteBatch spriteBatch)
+    {
+        _spriteBatch = spriteBatch;
+        _nineSliceSprite = new NineSliceSprite(region, "door");
+    }
+
+    public override void Draw(GameTime gameTime)
+    {
+        _nineSliceSprite.Draw(
+            _spriteBatch,
+            new Rectangle(_initialPosition.ToPoint(), door.Size.ToPoint()));
+    }
+}
+
+internal class Player(Vector2 initialPosition)
 {
     private SpriteBatch _spriteBatch = null!;
     private AnimatedSprite idle = null!;
-    public Vector2 CurrentInitialPosition { get; private set; } = initialPosition;
-    private Rectangle HitBox => new(CurrentInitialPosition.ToPoint() + new Point(-4, 5), new Point(7, 3));
+    public Vector2 CurrentPosition { get; set; } = initialPosition;
+    public Rectangle HitBox => new(CurrentPosition.ToPoint() + new Point(-4, 5), new Point(7, 3));
 
     public void Load(SpriteSheet spriteSheet, SpriteBatch spriteBatch)
     {
@@ -152,9 +197,9 @@ internal class Player(Vector2 initialPosition) : Entity
     }
 
 
-    public override void Update(GameTime gameTime, LDtkIntGrid collisions)
+    public void Update(GameTime gameTime, LDtkIntGrid collisions)
     {
-        var oldPosition = CurrentInitialPosition;
+        var oldPosition = CurrentPosition;
 
         idle.Update(gameTime);
 
@@ -163,20 +208,20 @@ internal class Player(Vector2 initialPosition) : Entity
         var speed = 100f;
         if (keyboardState.IsKeyDown(Keys.Left))
         {
-            CurrentInitialPosition = CurrentInitialPosition with { X = CurrentInitialPosition.X - (speed * (float)gameTime.ElapsedGameTime.TotalSeconds) };
+            CurrentPosition = CurrentPosition with { X = CurrentPosition.X - (speed * (float)gameTime.ElapsedGameTime.TotalSeconds) };
         }
         else if (keyboardState.IsKeyDown(Keys.Right))
         {
-            CurrentInitialPosition = CurrentInitialPosition with { X = CurrentInitialPosition.X + (speed * (float)gameTime.ElapsedGameTime.TotalSeconds) };
+            CurrentPosition = CurrentPosition with { X = CurrentPosition.X + (speed * (float)gameTime.ElapsedGameTime.TotalSeconds) };
         }
 
         if (keyboardState.IsKeyDown(Keys.Up))
         {
-            CurrentInitialPosition = CurrentInitialPosition with { Y = CurrentInitialPosition.Y - (speed * (float)gameTime.ElapsedGameTime.TotalSeconds) };
+            CurrentPosition = CurrentPosition with { Y = CurrentPosition.Y - (speed * (float)gameTime.ElapsedGameTime.TotalSeconds) };
         }
         else if (keyboardState.IsKeyDown(Keys.Down))
         {
-            CurrentInitialPosition = CurrentInitialPosition with { Y = CurrentInitialPosition.Y + (speed * (float)gameTime.ElapsedGameTime.TotalSeconds) };
+            CurrentPosition = CurrentPosition with { Y = CurrentPosition.Y + (speed * (float)gameTime.ElapsedGameTime.TotalSeconds) };
         }
 
         if (collisions.GetValueAt(collisions.FromWorldToGridSpace(HitBox.TopLeft())) != 0
@@ -184,13 +229,13 @@ internal class Player(Vector2 initialPosition) : Entity
             || collisions.GetValueAt(collisions.FromWorldToGridSpace(HitBox.BottomLeft())) != 0
             || collisions.GetValueAt(collisions.FromWorldToGridSpace(HitBox.BottomRight())) != 0)
         {
-            CurrentInitialPosition = oldPosition;
+            CurrentPosition = oldPosition;
         }
     }
 
-    public override void Draw(GameTime gameTime)
+    public void Draw(GameTime gameTime)
     {
-        var spritePosition = CurrentInitialPosition - new Vector2(16, 16);
+        var spritePosition = CurrentPosition - new Vector2(16, 16);
         _spriteBatch.Draw(idle, spritePosition);
     }
 }
@@ -201,4 +246,116 @@ internal static class RectangleExtensions
     public static Point TopRight(this Rectangle rect) => new Point(rect.Right, rect.Y);
     public static Point BottomLeft(this Rectangle rect) => new Point(rect.Right, rect.Bottom);
     public static Point BottomRight(this Rectangle rect) => new Point(rect.Right, rect.Bottom);
+}
+
+internal class NineSliceSprite(TextureRegion region, string name)
+{
+    public void Draw(SpriteBatch spriteBatch, Rectangle destination)
+    {
+        var slice = region.GetSlice(name) as MonoGame.Aseprite.NinePatchSlice;
+        if (slice is null)
+        {
+            throw new ArgumentException(nameof(region));
+        }
+
+        var source9 = PatchUtil.Create(slice.Bounds, slice.CenterBounds);
+        var destination9 = PatchUtil.Create(destination,
+            new Rectangle(
+                source9[0].Width,
+                source9[0].Height,
+                destination.Width - source9[0].Width - source9[2].Width,
+                destination.Height - source9[0].Height - source9[6].Height));
+
+        foreach (var (src, dest) in source9.Zip(destination9))
+        {
+            spriteBatch.Draw(
+                region.Texture,
+                dest,
+                src,
+                Color.White);
+        }
+    }
+}
+
+internal static class PatchUtil
+{
+    public static Rectangle[] Create(Rectangle Bounds, Rectangle CenterBoundsRel)
+    {
+        var CenterBounds = new Rectangle(
+            Bounds.Location.X + CenterBoundsRel.X,
+            Bounds.Location.Y + CenterBoundsRel.Y,
+            CenterBoundsRel.Width,
+            CenterBoundsRel.Height);
+
+        var widthLeft = CenterBounds.X - Bounds.Location.X;
+        var widthCenter = CenterBounds.Width;
+        var widthRight = Bounds.Width - widthLeft - widthCenter;
+
+        var heightTop = CenterBounds.Y - Bounds.Location.Y;
+        var heightMiddle = CenterBounds.Height;
+        var heightBottom = Bounds.Height - heightTop - heightMiddle;
+
+        var topLeft = new Rectangle(
+            Bounds.Location.X,
+            Bounds.Location.Y,
+            widthLeft,
+            heightTop);
+
+        var topCenter = new Rectangle(
+            CenterBounds.X,
+            Bounds.Location.Y,
+            widthCenter,
+            heightTop);
+
+        var topRight = new Rectangle(
+            CenterBounds.X + CenterBounds.Width,
+            Bounds.Location.Y,
+            widthRight,
+            heightTop);
+
+        var middleLeft = new Rectangle(
+            Bounds.Location.X,
+            CenterBounds.Y,
+            widthLeft,
+            heightMiddle);
+
+        var middleCenter = CenterBounds;
+
+        var middleRight = new Rectangle(
+            CenterBounds.X + CenterBounds.Width,
+            CenterBounds.Y,
+            widthRight,
+            heightMiddle);
+
+        var bottomLeft = new Rectangle(
+            Bounds.Location.X,
+            CenterBounds.Y + CenterBounds.Height,
+            widthLeft,
+            heightBottom);
+
+        var bottomCenter = new Rectangle(
+            CenterBounds.X,
+            CenterBounds.Y + CenterBounds.Height,
+            widthCenter,
+            heightBottom);
+
+        var bottomRight = new Rectangle(
+            CenterBounds.X + CenterBounds.Width,
+            CenterBounds.Y + CenterBounds.Height,
+            widthRight,
+            heightBottom);
+
+        return
+        [
+            topLeft,
+            topCenter,
+            topRight,
+            middleLeft,
+            middleCenter,
+            middleRight,
+            bottomLeft,
+            bottomCenter,
+            bottomRight,
+        ];
+    }
 }
