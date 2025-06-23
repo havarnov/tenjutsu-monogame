@@ -1,6 +1,4 @@
-﻿using System.Runtime.InteropServices.ComTypes;
-using AsepriteDotNet.Aseprite;
-using AsepriteDotNet.Aseprite.Types;
+﻿using AsepriteDotNet.Aseprite;
 using LDtk;
 using LDtkTypes;
 using Microsoft.Xna.Framework;
@@ -8,15 +6,12 @@ using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using MonoGame.Aseprite;
 using TenJutsu;
-using NinePatchSlice = AsepriteDotNet.NinePatchSlice;
 
 using var game = new TenJutsuGame();
 game.Run();
 
 public class TenJutsuGame : Game
 {
-    private readonly GraphicsDeviceManager graphics;
-
     private LDtkWorld world = null!;
     private SpriteBatch spriteBatch = null!;
     private LDtkLevel currentLevel = null!;
@@ -28,7 +23,7 @@ public class TenJutsuGame : Game
 
     public TenJutsuGame()
     {
-        graphics = new GraphicsDeviceManager(this);
+        _ = new GraphicsDeviceManager(this);
         Content.RootDirectory = "Content";
         IsMouseVisible = false;
     }
@@ -146,7 +141,7 @@ public class TenJutsuGame : Game
 
 internal abstract class Entity
 {
-    public virtual Rectangle? HitBox { get; }
+    public abstract Rectangle? HitBox { get; }
 
     public virtual void Load(SpriteBatch spriteBatch)
     {
@@ -252,7 +247,7 @@ internal class NineSliceSprite(TextureRegion region, string name)
 {
     public void Draw(SpriteBatch spriteBatch, Rectangle destination)
     {
-        var slice = region.GetSlice(name) as MonoGame.Aseprite.NinePatchSlice;
+        var slice = region.GetSlice(name) as NinePatchSlice;
         if (slice is null)
         {
             throw new ArgumentException(nameof(region));
