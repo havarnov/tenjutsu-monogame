@@ -55,23 +55,27 @@ public class TenJutsuGame : Game
         // Create a new SpriteBatch, which can be used to draw textures.
         spriteBatch = new SpriteBatch(GraphicsDevice);
 
-        var file = Content.Load<AsepriteFile>("entities");
-        var spriteSheet = file.CreateSpriteSheet(GraphicsDevice, onlyVisibleLayers: true);
-
         var tilesFile = Content.Load<AsepriteFile>("tiles");
         var atlas = tilesFile.CreateTextureAtlas(
             GraphicsDevice,
             layers: tilesFile.Layers.ToArray().Select(l => l.Name).ToList());
+        var region = atlas.GetRegion("tiles 0");
 
         var doors = currentLevel.GetEntities<LDtkTypes.Door>();
         foreach (var door in doors)
         {
-            var newDoor = new Door(door, atlas.GetRegion("tiles 0"));
+            var newDoor = new Door(door, region);
             newDoor.Load(spriteBatch);
             entities.Add(newDoor);
         }
 
-        player.Load(spriteSheet, spriteBatch);
+        var file = Content.Load<AsepriteFile>("entities");
+        var spriteSheet = file.CreateSpriteSheet(GraphicsDevice, onlyVisibleLayers: true);
+
+        player.Load(
+            spriteSheet,
+            region,
+            spriteBatch);
     }
 
     protected override void Update(GameTime gameTime)
@@ -181,12 +185,17 @@ internal class Player(Vector2 initialPosition)
 {
     private SpriteBatch _spriteBatch = null!;
     private AnimatedSprite idle = null!;
+    private TextureRegion _region = null!;
     public Vector2 CurrentPosition { get; set; } = initialPosition;
     public Rectangle HitBox => new(CurrentPosition.ToPoint() + new Point(-4, 5), new Point(7, 3));
 
-    public void Load(SpriteSheet spriteSheet, SpriteBatch spriteBatch)
+    public void Load(
+        SpriteSheet spriteSheet,
+        TextureRegion region,
+        SpriteBatch spriteBatch)
     {
         _spriteBatch = spriteBatch;
+        _region = region;
         idle = spriteSheet.CreateAnimatedSprite("kIdle");
         idle.Play();
     }
@@ -230,6 +239,17 @@ internal class Player(Vector2 initialPosition)
 
     public void Draw(GameTime gameTime)
     {
+        var groundShadowSlice = _region.GetSlice("groundShadow");
+        _spriteBatch.Draw(
+            _region.Texture,
+            new Rectangle(
+                (int)CurrentPosition.X - 8,
+                (int)(CurrentPosition.Y + 6.5f),
+                groundShadowSlice.Bounds.Width,
+                groundShadowSlice.Bounds.Height),
+            groundShadowSlice.Bounds,
+            Color.White);
+
         var spritePosition = CurrentPosition - new Vector2(16, 16);
         _spriteBatch.Draw(idle, spritePosition);
     }
