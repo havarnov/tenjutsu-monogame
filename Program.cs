@@ -18,7 +18,7 @@ public class TenJutsuGame : Game
     private Camera camera = null!;
     private float pixelScale = 1f;
     private LdtkRenderer renderer = null!;
-    private Player player = null!;
+    private Hero _hero = null!;
     private readonly List<Entity> entities = [];
 
     public TenJutsuGame()
@@ -39,7 +39,7 @@ public class TenJutsuGame : Game
         currentLevel = world.LoadLevel("Entrance");
 
         var playerStart = currentLevel.GetEntity<PlayerStart>();
-        player = new Player(playerStart.Position);
+        _hero = new Hero(playerStart.Position);
 
         base.Initialize();
 
@@ -72,7 +72,7 @@ public class TenJutsuGame : Game
         var file = Content.Load<AsepriteFile>("entities");
         var spriteSheet = file.CreateSpriteSheet(GraphicsDevice, onlyVisibleLayers: true);
 
-        player.Load(
+        _hero.Load(
             spriteSheet,
             region,
             spriteBatch);
@@ -82,9 +82,9 @@ public class TenJutsuGame : Game
     {
         var collisions = currentLevel.GetIntGrid("Collisions");
 
-        var oldPosition = player.CurrentPosition;
+        var oldPosition = _hero.CurrentPosition;
 
-        player.Update(gameTime, collisions);
+        _hero.Update(gameTime, collisions);
 
         foreach (var entity in entities)
         {
@@ -92,9 +92,9 @@ public class TenJutsuGame : Game
 
             if (entity.HitBox is { } hitBox)
             {
-                if (hitBox.Intersects(player.HitBox))
+                if (hitBox.Intersects(_hero.HitBox))
                 {
-                    player.CurrentPosition = oldPosition;
+                    _hero.CurrentPosition = oldPosition;
                 }
             }
         }
@@ -102,12 +102,12 @@ public class TenJutsuGame : Game
         var cameraMinX = currentLevel.WorldX + (GraphicsDevice.Viewport.Width / 2f / pixelScale);
         var cameraMaxX = currentLevel.WorldX + currentLevel.PxWid - (GraphicsDevice.Viewport.Width / 2f / pixelScale);
         var cameraPosition = new Vector2(
-            cameraMinX > player.CurrentPosition.X
+            cameraMinX > _hero.CurrentPosition.X
                 ? cameraMinX
-                : cameraMaxX < player.CurrentPosition.X
+                : cameraMaxX < _hero.CurrentPosition.X
                     ? cameraMaxX
-                    : player.CurrentPosition.X,
-            currentLevel.WorldY > player.CurrentPosition.Y ? currentLevel.WorldY : player.CurrentPosition.Y);
+                    : _hero.CurrentPosition.X,
+            currentLevel.WorldY > _hero.CurrentPosition.Y ? currentLevel.WorldY : _hero.CurrentPosition.Y);
         camera.Position = cameraPosition;
         camera.Zoom = pixelScale;
         camera.Update();
@@ -135,7 +135,7 @@ public class TenJutsuGame : Game
             entity.Draw(gameTime);
         }
 
-        player.Draw(gameTime);
+        _hero.Draw(gameTime);
 
         spriteBatch.End();
 
@@ -178,80 +178,6 @@ internal class Door(LDtkTypes.Door door, TextureRegion region) : Entity
         _nineSliceSprite.Draw(
             _spriteBatch,
             new Rectangle(_initialPosition.ToPoint(), door.Size.ToPoint()));
-    }
-}
-
-internal class Player(Vector2 initialPosition)
-{
-    private SpriteBatch _spriteBatch = null!;
-    private AnimatedSprite idle = null!;
-    private TextureRegion _region = null!;
-    public Vector2 CurrentPosition { get; set; } = initialPosition;
-    public Rectangle HitBox => new(CurrentPosition.ToPoint() + new Point(-4, 5), new Point(7, 3));
-
-    public void Load(
-        SpriteSheet spriteSheet,
-        TextureRegion region,
-        SpriteBatch spriteBatch)
-    {
-        _spriteBatch = spriteBatch;
-        _region = region;
-        idle = spriteSheet.CreateAnimatedSprite("kIdle");
-        idle.Play();
-    }
-
-
-    public void Update(GameTime gameTime, LDtkIntGrid collisions)
-    {
-        var oldPosition = CurrentPosition;
-
-        idle.Update(gameTime);
-
-        var keyboardState = Keyboard.GetState();
-
-        var speed = 100f;
-        if (keyboardState.IsKeyDown(Keys.Left))
-        {
-            CurrentPosition = CurrentPosition with { X = CurrentPosition.X - (speed * (float)gameTime.ElapsedGameTime.TotalSeconds) };
-        }
-        else if (keyboardState.IsKeyDown(Keys.Right))
-        {
-            CurrentPosition = CurrentPosition with { X = CurrentPosition.X + (speed * (float)gameTime.ElapsedGameTime.TotalSeconds) };
-        }
-
-        if (keyboardState.IsKeyDown(Keys.Up))
-        {
-            CurrentPosition = CurrentPosition with { Y = CurrentPosition.Y - (speed * (float)gameTime.ElapsedGameTime.TotalSeconds) };
-        }
-        else if (keyboardState.IsKeyDown(Keys.Down))
-        {
-            CurrentPosition = CurrentPosition with { Y = CurrentPosition.Y + (speed * (float)gameTime.ElapsedGameTime.TotalSeconds) };
-        }
-
-        if (collisions.GetValueAt(collisions.FromWorldToGridSpace(HitBox.TopLeft())) != 0
-            || collisions.GetValueAt(collisions.FromWorldToGridSpace(HitBox.TopRight())) != 0
-            || collisions.GetValueAt(collisions.FromWorldToGridSpace(HitBox.BottomLeft())) != 0
-            || collisions.GetValueAt(collisions.FromWorldToGridSpace(HitBox.BottomRight())) != 0)
-        {
-            CurrentPosition = oldPosition;
-        }
-    }
-
-    public void Draw(GameTime gameTime)
-    {
-        var groundShadowSlice = _region.GetSlice("groundShadow");
-        _spriteBatch.Draw(
-            _region.Texture,
-            new Rectangle(
-                (int)CurrentPosition.X - 8,
-                (int)(CurrentPosition.Y + 6.5f),
-                groundShadowSlice.Bounds.Width,
-                groundShadowSlice.Bounds.Height),
-            groundShadowSlice.Bounds,
-            Color.White);
-
-        var spritePosition = CurrentPosition - new Vector2(16, 16);
-        _spriteBatch.Draw(idle, spritePosition);
     }
 }
 
