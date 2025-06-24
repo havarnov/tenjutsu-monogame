@@ -67,7 +67,7 @@ internal class Hero(Vector2 initialPosition)
     private TextureRegion _region = null!;
 
     public Vector2 CurrentPosition = initialPosition;
-    public Rectangle HitBox => new(CurrentPosition.ToPoint() + new Point(-4, 5), new Point(7, 3));
+    public Rectangle HitBox => new(CurrentPosition.ToPoint() + new Point(-8, 5), new Point(15, 5));
 
     private readonly StateManager state = new();
 
