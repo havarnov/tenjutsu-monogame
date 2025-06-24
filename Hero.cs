@@ -81,8 +81,7 @@ internal class Hero(Vector2 initialPosition)
         state.Load(spriteSheet);
     }
 
-
-    public void Update(GameTime gameTime, LDtkIntGrid collisions)
+    public void Update(GameTime gameTime, LDtkIntGrid collisions, List<Entity> entities)
     {
         state.Animation.Update(gameTime);
 
@@ -118,7 +117,7 @@ internal class Hero(Vector2 initialPosition)
         CurrentPosition.X = startOfFramePosition.X + totalDesiredMovement.X;
         CurrentPosition.Y = startOfFramePosition.Y;
 
-        bool collidedHorizontally = CheckForCollisionAtCurrentPosition(collisions);
+        bool collidedHorizontally = CheckForCollisionAtCurrentPosition(collisions, entities);
 
         if (collidedHorizontally)
         {
@@ -129,7 +128,7 @@ internal class Hero(Vector2 initialPosition)
         CurrentPosition.X = startOfFramePosition.X;
         CurrentPosition.Y = startOfFramePosition.Y + totalDesiredMovement.Y;
 
-        bool collidedVertically = CheckForCollisionAtCurrentPosition(collisions);
+        bool collidedVertically = CheckForCollisionAtCurrentPosition(collisions, entities);
 
         if (collidedVertically)
         {
@@ -155,12 +154,30 @@ internal class Hero(Vector2 initialPosition)
         }
     }
 
-    private bool CheckForCollisionAtCurrentPosition(LDtkIntGrid collisions)
+    private bool CheckForCollisionAtCurrentPosition(LDtkIntGrid collisions, List<Entity> entities)
     {
-        return collisions.GetValueAt(collisions.FromWorldToGridSpace(HitBox.TopLeft())) != 0
+        var wallCollision = collisions.GetValueAt(collisions.FromWorldToGridSpace(HitBox.TopLeft())) != 0
                || collisions.GetValueAt(collisions.FromWorldToGridSpace(HitBox.TopRight())) != 0
                || collisions.GetValueAt(collisions.FromWorldToGridSpace(HitBox.BottomLeft())) != 0
                || collisions.GetValueAt(collisions.FromWorldToGridSpace(HitBox.BottomRight())) != 0;
+
+        if (wallCollision)
+        {
+            return true;
+        }
+
+        foreach (var entity in entities)
+        {
+            if (entity.HitBox is { } hitBox)
+            {
+                if (hitBox.Intersects(HitBox))
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     public void Draw(GameTime gameTime)

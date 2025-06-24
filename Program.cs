@@ -84,19 +84,11 @@ public class TenJutsuGame : Game
 
         var oldPosition = _hero.CurrentPosition;
 
-        _hero.Update(gameTime, collisions);
+        _hero.Update(gameTime, collisions, entities);
 
         foreach (var entity in entities)
         {
             entity.Update(gameTime, collisions);
-
-            if (entity.HitBox is { } hitBox)
-            {
-                if (hitBox.Intersects(_hero.HitBox))
-                {
-                    _hero.CurrentPosition = oldPosition;
-                }
-            }
         }
 
         var cameraMinX = currentLevel.WorldX + (GraphicsDevice.Viewport.Width / 2f / pixelScale);
