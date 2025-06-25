@@ -69,6 +69,20 @@ public class TenJutsuGame : Game
             entities.Add(newDoor);
         }
 
+        var worldFile = Content.Load<AsepriteFile>("world");
+        var worldAtlas = worldFile.CreateTextureAtlas(
+            GraphicsDevice,
+            layers: worldFile.Layers.ToArray().Select(l => l.Name).ToList());
+        var worldRegion = worldAtlas.GetRegion("world 0");
+
+        var destructibles = currentLevel.GetEntities<LDtkTypes.Destructible>();
+        foreach (var destructible in destructibles)
+        {
+            var newDestructible = new Destructible(destructible, worldRegion);
+            newDestructible.Load(spriteBatch);
+            entities.Add(newDestructible);
+        }
+
         var file = Content.Load<AsepriteFile>("entities");
         var spriteSheet = file.CreateSpriteSheet(GraphicsDevice, onlyVisibleLayers: true);
 
@@ -149,6 +163,26 @@ internal abstract class Entity
 
     public virtual void Draw(GameTime gameTime)
     {
+    }
+}
+
+internal class Destructible(LDtkTypes.Destructible destructible, TextureRegion region) : Entity
+{
+    private SpriteBatch _spriteBatch = null!;
+    public override Rectangle? HitBox { get; } = null;
+
+    public override void Load(SpriteBatch spriteBatch)
+    {
+        _spriteBatch = spriteBatch;
+    }
+
+    public override void Draw(GameTime gameTime)
+    {
+        _spriteBatch.Draw(
+            region.Texture,
+            new Rectangle(destructible.Position.ToPoint() - (destructible.Pivot * destructible.Size).ToPoint(), new Point(destructible.tile.W, destructible.tile.H)),
+            destructible.tile,
+            Color.White);
     }
 }
 
