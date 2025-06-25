@@ -30,6 +30,8 @@ internal class Hero(Vector2 initialPosition)
             }
         }
 
+        public Vector2 Velocity { get; set; } = Vector2.Zero;
+
         private State _current = default;
         public State Current
         {
@@ -87,7 +89,6 @@ internal class Hero(Vector2 initialPosition)
 
         var keyboardState = Keyboard.GetState();
 
-        var speed = 1f;
 
         var horizontalInput =
             (keyboardState.IsKeyDown(Keys.Left) ? -1 : 0)
@@ -98,17 +99,39 @@ internal class Hero(Vector2 initialPosition)
             + (keyboardState.IsKeyDown(Keys.Down) ? 1 : 0);
 
         var moveVector = new Vector2(horizontalInput, verticalInput);
-        if (moveVector == Vector2.Zero)
+        const float speed = 1f;
+        const float damping = 0.91f;
+
+        if (moveVector != Vector2.Zero)
         {
-            state.Current = State.Idle;
-            return;
+            // Player is providing input
+            state.Current = State.Running;
+            var targetVelocity = Vector2.Normalize(moveVector) * speed;
+            state.Velocity = Vector2.Lerp(state.Velocity, targetVelocity, 0.2f);
+        }
+        else
+        {
+            // Player is not providing input, so slow down
+            if (state.Velocity.Length() > 0.1f)
+            {
+                state.Velocity *= damping;
+                if (state.Velocity.Length() <= 0.1f)
+                {
+                    state.Velocity = Vector2.Zero;
+                }
+            }
+            else
+            {
+                state.Velocity = Vector2.Zero;
+            }
+
+            if (state.Velocity == Vector2.Zero)
+            {
+                state.Current = State.Idle;
+            }
         }
 
-        state.Current = State.Running;
-
-        var totalDesiredMovement = moveVector;
-        totalDesiredMovement.Normalize();
-        totalDesiredMovement *= speed;
+        var totalDesiredMovement = state.Velocity;
 
         Vector2 startOfFramePosition = CurrentPosition;
         Vector2 finalEffectiveMovement = totalDesiredMovement;
@@ -135,18 +158,11 @@ internal class Hero(Vector2 initialPosition)
             finalEffectiveMovement.Y = 0;
         }
 
-        if (finalEffectiveMovement != Vector2.Zero
-            && (finalEffectiveMovement.X == 0 || finalEffectiveMovement.Y == 0))
-        {
-            // Only one component is non-zero
-            finalEffectiveMovement.Normalize();
-            finalEffectiveMovement *= speed;
-        }
-
         // --- Apply the final, adjusted movement ---
         // Reset position to start before applying the final, combined movement
         CurrentPosition = startOfFramePosition;
         CurrentPosition += finalEffectiveMovement;
+        state.Velocity = finalEffectiveMovement;
 
         if (finalEffectiveMovement.X != 0)
         {
@@ -156,10 +172,11 @@ internal class Hero(Vector2 initialPosition)
 
     private bool CheckForCollisionAtCurrentPosition(LDtkIntGrid collisions, List<Entity> entities)
     {
-        var wallCollision = collisions.GetValueAt(collisions.FromWorldToGridSpace(HitBox.TopLeft())) != 0
-               || collisions.GetValueAt(collisions.FromWorldToGridSpace(HitBox.TopRight())) != 0
-               || collisions.GetValueAt(collisions.FromWorldToGridSpace(HitBox.BottomLeft())) != 0
-               || collisions.GetValueAt(collisions.FromWorldToGridSpace(HitBox.BottomRight())) != 0;
+        var wallCollision =
+            collisions.GetValueAt(collisions.FromWorldToGridSpace(HitBox.TopLeft())) != 0
+            || collisions.GetValueAt(collisions.FromWorldToGridSpace(HitBox.TopRight())) != 0
+            || collisions.GetValueAt(collisions.FromWorldToGridSpace(HitBox.BottomLeft())) != 0
+            || collisions.GetValueAt(collisions.FromWorldToGridSpace(HitBox.BottomRight())) != 0;
 
         if (wallCollision)
         {
