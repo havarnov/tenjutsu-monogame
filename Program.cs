@@ -175,9 +175,9 @@ internal class Door(LDtkTypes.Door door, TextureRegion region) : Entity
 
 internal static class RectangleExtensions
 {
-    public static Point TopLeft(this Rectangle rect) => new Point(rect.X, rect.Y);
-    public static Point TopRight(this Rectangle rect) => new Point(rect.Right, rect.Y);
-    public static Point BottomLeft(this Rectangle rect) => new Point(rect.Right, rect.Bottom);
+    public static Point TopLeft(this Rectangle rect) => new Point(rect.Left, rect.Top);
+    public static Point TopRight(this Rectangle rect) => new Point(rect.Right, rect.Top);
+    public static Point BottomLeft(this Rectangle rect) => new Point(rect.Left, rect.Bottom);
     public static Point BottomRight(this Rectangle rect) => new Point(rect.Right, rect.Bottom);
 }
 
