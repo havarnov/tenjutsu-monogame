@@ -84,12 +84,11 @@ internal class Hero(Vector2 initialPosition) : Entity
         state.Load(spriteSheet);
     }
 
-    public void Update(GameTime gameTime, LDtkIntGrid collisions, List<Entity> entities)
+    public override void Update(GameTime gameTime, LDtkIntGrid collisions, List<Entity> entities)
     {
         state.Animation.Update(gameTime);
 
         var keyboardState = Keyboard.GetState();
-
 
         var horizontalInput =
             (keyboardState.IsKeyDown(Keys.Left) ? -1 : 0)
@@ -186,6 +185,11 @@ internal class Hero(Vector2 initialPosition) : Entity
 
         foreach (var entity in entities)
         {
+            if (object.ReferenceEquals(entity, this))
+            {
+                continue;
+            }
+
             if (entity.HitBox is { } hitBox)
             {
                 if (hitBox.Intersects(HitBoxInner))
@@ -198,7 +202,7 @@ internal class Hero(Vector2 initialPosition) : Entity
         return false;
     }
 
-    public void Draw(GameTime gameTime)
+    public override void Draw(GameTime gameTime)
     {
         var spritePosition = CurrentPosition - new Vector2(16, 16);
 

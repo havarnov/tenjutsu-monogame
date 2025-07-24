@@ -40,6 +40,7 @@ public class TenJutsuGame : Game
 
         var playerStart = currentLevel.GetEntity<PlayerStart>();
         _hero = new Hero(playerStart.Position);
+        entities.Add(_hero);
 
         base.Initialize();
 
@@ -96,11 +97,9 @@ public class TenJutsuGame : Game
     {
         var collisions = currentLevel.GetIntGrid("Collisions");
 
-        _hero.Update(gameTime, collisions, entities);
-
         foreach (var entity in entities)
         {
-            entity.Update(gameTime, collisions);
+            entity.Update(gameTime, collisions, entities);
         }
 
         var cameraMinX = currentLevel.WorldX + (GraphicsDevice.Viewport.Width / 2f / pixelScale);
@@ -139,8 +138,6 @@ public class TenJutsuGame : Game
             entity.Draw(gameTime);
         }
 
-        _hero.Draw(gameTime);
-
         spriteBatch.End();
 
         base.Draw(gameTime);
@@ -152,17 +149,9 @@ internal abstract class Entity
     public abstract Rectangle? HitBox { get; }
     protected float Depth => HitBox?.Bottom / 1000f ?? 1f;
 
-    public virtual void Load(SpriteBatch spriteBatch)
-    {
-    }
+    public abstract void Update(GameTime gameTime, LDtkIntGrid collisions, List<Entity> entities);
 
-    public virtual void Update(GameTime gameTime, LDtkIntGrid collisions)
-    {
-    }
-
-    public virtual void Draw(GameTime gameTime)
-    {
-    }
+    public abstract void Draw(GameTime gameTime);
 }
 
 internal class Destructible(LDtkTypes.Destructible destructible, TextureRegion region) : Entity
@@ -182,9 +171,13 @@ internal class Destructible(LDtkTypes.Destructible destructible, TextureRegion r
             (int)(destructible.tile.W * (1f - sizeWidth)),
             (int)(destructible.tile.H * sizeHeight)));
 
-    public override void Load(SpriteBatch spriteBatch)
+    public void Load(SpriteBatch spriteBatch)
     {
         _spriteBatch = spriteBatch;
+    }
+
+    public override void Update(GameTime gameTime, LDtkIntGrid collisions, List<Entity> entities)
+    {
     }
 
     public override void Draw(GameTime gameTime)
@@ -208,10 +201,14 @@ internal class Door(LDtkTypes.Door door, TextureRegion region) : Entity
     private Vector2 _initialPosition = door.Position;
     public override Rectangle? HitBox => new Rectangle(_initialPosition.ToPoint(), door.Size.ToPoint());
 
-    public override void Load(SpriteBatch spriteBatch)
+    public void Load(SpriteBatch spriteBatch)
     {
         _spriteBatch = spriteBatch;
         _nineSliceSprite = new NineSliceSprite(region, "door");
+    }
+
+    public override void Update(GameTime gameTime, LDtkIntGrid collisions, List<Entity> entities)
+    {
     }
 
     public override void Draw(GameTime gameTime)
