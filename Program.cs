@@ -96,8 +96,6 @@ public class TenJutsuGame : Game
     {
         var collisions = currentLevel.GetIntGrid("Collisions");
 
-        var oldPosition = _hero.CurrentPosition;
-
         _hero.Update(gameTime, collisions, entities);
 
         foreach (var entity in entities)
@@ -152,6 +150,7 @@ public class TenJutsuGame : Game
 internal abstract class Entity
 {
     public abstract Rectangle? HitBox { get; }
+    protected float Depth => HitBox?.Bottom / 1000f ?? 1f;
 
     public virtual void Load(SpriteBatch spriteBatch)
     {
@@ -169,7 +168,19 @@ internal abstract class Entity
 internal class Destructible(LDtkTypes.Destructible destructible, TextureRegion region) : Entity
 {
     private SpriteBatch _spriteBatch = null!;
-    public override Rectangle? HitBox { get; } = null;
+
+    private float sizeWidth = 0.4f;
+    private float sizeHeight = 0.25f;
+
+    public override Rectangle? HitBox => new Rectangle(
+        destructible.Position.ToPoint()
+        - (destructible.Pivot * destructible.Size).ToPoint()
+        + new Point(
+            (int)(destructible.tile.W * (sizeWidth/2)),
+            (int)(destructible.tile.H * (1f - sizeHeight))),
+        new Point(
+            (int)(destructible.tile.W * (1f - sizeWidth)),
+            (int)(destructible.tile.H * sizeHeight)));
 
     public override void Load(SpriteBatch spriteBatch)
     {
@@ -182,7 +193,11 @@ internal class Destructible(LDtkTypes.Destructible destructible, TextureRegion r
             region.Texture,
             new Rectangle(destructible.Position.ToPoint() - (destructible.Pivot * destructible.Size).ToPoint(), new Point(destructible.tile.W, destructible.tile.H)),
             destructible.tile,
-            Color.White);
+            Color.White,
+            rotation: 0,
+            origin: Vector2.One,
+            effects: SpriteEffects.None,
+            layerDepth: Depth);
     }
 }
 

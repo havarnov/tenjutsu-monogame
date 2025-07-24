@@ -6,7 +6,7 @@ using MonoGame.Aseprite;
 
 namespace TenJutsu;
 
-internal class Hero(Vector2 initialPosition)
+internal class Hero(Vector2 initialPosition) : Entity
 {
     private class StateManager
     {
@@ -69,7 +69,8 @@ internal class Hero(Vector2 initialPosition)
     private TextureRegion _region = null!;
 
     public Vector2 CurrentPosition = initialPosition;
-    public Rectangle HitBox => new(CurrentPosition.ToPoint() + new Point(-8, 5), new Point(15, 5));
+    public override Rectangle? HitBox => new(CurrentPosition.ToPoint() + new Point(-8, 5), new Point(15, 5));
+    private Rectangle HitBoxInner => HitBox ?? throw new ArgumentNullException(nameof(HitBox));
 
     private readonly StateManager state = new();
 
@@ -173,10 +174,10 @@ internal class Hero(Vector2 initialPosition)
     private bool CheckForCollisionAtCurrentPosition(LDtkIntGrid collisions, List<Entity> entities)
     {
         var wallCollision =
-            collisions.GetValueAt(collisions.FromWorldToGridSpace(HitBox.TopLeft())) != 0
-            || collisions.GetValueAt(collisions.FromWorldToGridSpace(HitBox.TopRight())) != 0
-            || collisions.GetValueAt(collisions.FromWorldToGridSpace(HitBox.BottomLeft())) != 0
-            || collisions.GetValueAt(collisions.FromWorldToGridSpace(HitBox.BottomRight())) != 0;
+            collisions.GetValueAt(collisions.FromWorldToGridSpace(HitBoxInner.TopLeft())) != 0
+            || collisions.GetValueAt(collisions.FromWorldToGridSpace(HitBoxInner.TopRight())) != 0
+            || collisions.GetValueAt(collisions.FromWorldToGridSpace(HitBoxInner.BottomLeft())) != 0
+            || collisions.GetValueAt(collisions.FromWorldToGridSpace(HitBoxInner.BottomRight())) != 0;
 
         if (wallCollision)
         {
@@ -187,7 +188,7 @@ internal class Hero(Vector2 initialPosition)
         {
             if (entity.HitBox is { } hitBox)
             {
-                if (hitBox.Intersects(HitBox))
+                if (hitBox.Intersects(HitBoxInner))
                 {
                     return true;
                 }
@@ -199,6 +200,8 @@ internal class Hero(Vector2 initialPosition)
 
     public void Draw(GameTime gameTime)
     {
+        var spritePosition = CurrentPosition - new Vector2(16, 16);
+
         var groundShadowSlice = _region.GetSlice("groundShadow");
         _spriteBatch.Draw(
             _region.Texture,
@@ -208,9 +211,20 @@ internal class Hero(Vector2 initialPosition)
                 groundShadowSlice.Bounds.Width,
                 groundShadowSlice.Bounds.Height),
             groundShadowSlice.Bounds,
-            Color.White);
+            Color.White,
+            rotation: 0,
+            origin: Vector2.One,
+            effects: SpriteEffects.None,
+            layerDepth: Depth);
 
-        var spritePosition = CurrentPosition - new Vector2(16, 16);
-        _spriteBatch.Draw(state.Animation, spritePosition);
+        _spriteBatch.Draw(
+            state.Animation.TextureRegion,
+            spritePosition,
+            state.Animation.Color *  state.Animation.Transparency,
+            state.Animation.Rotation,
+            state.Animation.Origin,
+            state.Animation.Scale,
+            state.Animation.SpriteEffects,
+            layerDepth: Depth);
     }
 }
