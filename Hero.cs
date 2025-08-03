@@ -1,4 +1,3 @@
-using LDtk;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
@@ -6,7 +5,7 @@ using MonoGame.Aseprite;
 
 namespace TenJutsu;
 
-internal class Hero(Vector2 initialPosition) : Entity
+internal class Hero(IBodyFactory bodyFactory, Vector2 initialPosition) : Entity
 {
     private class StateManager
     {
@@ -30,9 +29,8 @@ internal class Hero(Vector2 initialPosition) : Entity
             }
         }
 
-        public Vector2 Velocity { get; set; } = Vector2.Zero;
-
         private State _current = default;
+
         public State Current
         {
             get => _current;
@@ -68,9 +66,12 @@ internal class Hero(Vector2 initialPosition) : Entity
     private SpriteBatch _spriteBatch = null!;
     private TextureRegion _region = null!;
 
-    public Vector2 CurrentPosition = initialPosition;
-    public override Rectangle? HitBox => new(CurrentPosition.ToPoint() + new Point(-8, 5), new Point(15, 5));
-    private Rectangle HitBoxInner => HitBox ?? throw new ArgumentNullException(nameof(HitBox));
+    private readonly Body body = bodyFactory.Create(
+        initialPosition,
+        new Vector2(15f, 5f));
+
+    public Vector2 CurrentPosition => body.Position;
+    public override Rectangle? HitBox => new(CurrentPosition.ToPoint(), new Point(15, 5));
 
     private readonly StateManager state = new();
 
@@ -84,7 +85,7 @@ internal class Hero(Vector2 initialPosition) : Entity
         state.Load(spriteSheet);
     }
 
-    public override void Update(GameTime gameTime, LDtkIntGrid collisions, List<Entity> entities)
+    public override void Update(GameTime gameTime)
     {
         state.Animation.Update(gameTime);
 
@@ -99,125 +100,48 @@ internal class Hero(Vector2 initialPosition) : Entity
             + (keyboardState.IsKeyDown(Keys.Down) ? 1 : 0);
 
         var moveVector = new Vector2(horizontalInput, verticalInput);
-        const float speed = 1f;
-        const float damping = 0.91f;
+        const float speed = 60f;
+        const float damping = 0.05f;
 
         if (moveVector != Vector2.Zero)
         {
             // Player is providing input
-            state.Current = State.Running;
-            var targetVelocity = Vector2.Normalize(moveVector) * speed;
-            state.Velocity = Vector2.Lerp(state.Velocity, targetVelocity, 0.2f);
+            body.Velocity = Vector2.Normalize(moveVector) * speed;
+        }
+        else if (body.Velocity.Length() > 10f)
+        {
+            body.Velocity -= body.Velocity * damping;
         }
         else
         {
-            // Player is not providing input, so slow down
-            if (state.Velocity.Length() > 0.1f)
-            {
-                state.Velocity *= damping;
-                if (state.Velocity.Length() <= 0.1f)
-                {
-                    state.Velocity = Vector2.Zero;
-                }
-            }
-            else
-            {
-                state.Velocity = Vector2.Zero;
-            }
-
-            if (state.Velocity == Vector2.Zero)
-            {
-                state.Current = State.Idle;
-            }
+            body.Velocity = Vector2.Zero;
         }
 
-        var totalDesiredMovement = state.Velocity;
+        state.FacingLeft = body.Velocity.X < 0 || body.Velocity.X == 0f && state.FacingLeft;
 
-        Vector2 startOfFramePosition = CurrentPosition;
-        Vector2 finalEffectiveMovement = totalDesiredMovement;
-
-        // Temp test for X axis
-        CurrentPosition.X = startOfFramePosition.X + totalDesiredMovement.X;
-        CurrentPosition.Y = startOfFramePosition.Y;
-
-        bool collidedHorizontally = CheckForCollisionAtCurrentPosition(collisions, entities);
-
-        if (collidedHorizontally)
+        if (body.Velocity != Vector2.Zero)
         {
-            finalEffectiveMovement.X = 0;
+            state.Current = State.Running;
         }
-
-        // Temp test for Y axis
-        CurrentPosition.X = startOfFramePosition.X;
-        CurrentPosition.Y = startOfFramePosition.Y + totalDesiredMovement.Y;
-
-        bool collidedVertically = CheckForCollisionAtCurrentPosition(collisions, entities);
-
-        if (collidedVertically)
+        else
         {
-            finalEffectiveMovement.Y = 0;
+            state.Current = State.Idle;
         }
-
-        // --- Apply the final, adjusted movement ---
-        // Reset position to start before applying the final, combined movement
-        CurrentPosition = startOfFramePosition;
-        CurrentPosition += finalEffectiveMovement;
-        state.Velocity = finalEffectiveMovement;
-
-        if (finalEffectiveMovement.X != 0)
-        {
-            state.FacingLeft = finalEffectiveMovement.X < 0;
-        }
-    }
-
-    private bool CheckForCollisionAtCurrentPosition(LDtkIntGrid collisions, List<Entity> entities)
-    {
-        var wallCollision =
-            collisions.GetValueAt(collisions.FromWorldToGridSpace(HitBoxInner.TopLeft())) != 0
-            || collisions.GetValueAt(collisions.FromWorldToGridSpace(HitBoxInner.TopRight())) != 0
-            || collisions.GetValueAt(collisions.FromWorldToGridSpace(HitBoxInner.BottomLeft())) != 0
-            || collisions.GetValueAt(collisions.FromWorldToGridSpace(HitBoxInner.BottomRight())) != 0;
-
-        if (wallCollision)
-        {
-            return true;
-        }
-
-        foreach (var entity in entities)
-        {
-            if (object.ReferenceEquals(entity, this))
-            {
-                continue;
-            }
-
-            if (entity.HitBox is { } hitBox)
-            {
-                if (hitBox.Intersects(HitBoxInner))
-                {
-                    return true;
-                }
-            }
-        }
-
-        return false;
     }
 
     public override void Draw(GameTime gameTime)
     {
-        var spritePosition = CurrentPosition - new Vector2(16, 16);
-
+        var spritePosition = CurrentPosition - new Vector2(10, 20);
         var groundShadowSlice = _region.GetSlice("groundShadow");
         _spriteBatch.Draw(
             _region.Texture,
             new Rectangle(
-                (int)CurrentPosition.X - 8,
-                (int)(CurrentPosition.Y + 6.5f),
-                groundShadowSlice.Bounds.Width,
-                groundShadowSlice.Bounds.Height),
+                spritePosition.ToPoint() + new Point(10, 21),
+                groundShadowSlice.Bounds.Size),
             groundShadowSlice.Bounds,
             Color.White,
             rotation: 0,
-            origin: Vector2.One,
+            origin: Vector2.Zero,
             effects: SpriteEffects.None,
             layerDepth: Depth);
 
@@ -226,7 +150,7 @@ internal class Hero(Vector2 initialPosition) : Entity
             spritePosition,
             state.Animation.Color *  state.Animation.Transparency,
             state.Animation.Rotation,
-            state.Animation.Origin,
+            Vector2.Zero,
             state.Animation.Scale,
             state.Animation.SpriteEffects,
             layerDepth: Depth);

@@ -5,7 +5,10 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using MonoGame.Aseprite;
+using nkast.Aether.Physics2D.Collision.Shapes;
+using nkast.Aether.Physics2D.Dynamics;
 using TenJutsu;
+using Vector2 = Microsoft.Xna.Framework.Vector2;
 
 using var game = new TenJutsuGame();
 game.Run();
@@ -20,6 +23,7 @@ public class TenJutsuGame : Game
     private LdtkRenderer renderer = null!;
     private Hero _hero = null!;
     private readonly List<Entity> entities = [];
+    private World physicsWorld = null!;
 
     public TenJutsuGame()
     {
@@ -38,9 +42,34 @@ public class TenJutsuGame : Game
 
         currentLevel = world.LoadLevel("Entrance");
 
+        physicsWorld = new World
+        {
+            Gravity = new nkast.Aether.Physics2D.Common.Vector2(0, 0),
+        };
+        var factory = new BodyFactory(physicsWorld);
+
         var playerStart = currentLevel.GetEntity<PlayerStart>();
-        _hero = new Hero(playerStart.Position);
+        _hero = new Hero(factory, playerStart.Position);
         entities.Add(_hero);
+
+        var collisions = currentLevel.GetIntGrid("Collisions");
+        for (int i = 0; i < collisions.GridSize.X; i++)
+        {
+            for (int j = 0; j < collisions.GridSize.Y; j++)
+            {
+                if (collisions.GetValueAt(i, j) != 0)
+                {
+                    physicsWorld.CreateRectangle(
+                        collisions.TileSize,
+                        collisions.TileSize,
+                        1f,
+                        new nkast.Aether.Physics2D.Common.Vector2(collisions.WorldPosition.X, collisions.WorldPosition.Y)
+                        + new nkast.Aether.Physics2D.Common.Vector2(i * collisions.TileSize, j * collisions.TileSize),
+                        0f,
+                        BodyType.Static);
+                }
+            }
+        }
 
         base.Initialize();
 
@@ -62,27 +91,27 @@ public class TenJutsuGame : Game
             layers: tilesFile.Layers.ToArray().Select(l => l.Name).ToList());
         var region = atlas.GetRegion("tiles 0");
 
-        var doors = currentLevel.GetEntities<LDtkTypes.Door>();
-        foreach (var door in doors)
-        {
-            var newDoor = new Door(door, region);
-            newDoor.Load(spriteBatch);
-            entities.Add(newDoor);
-        }
+        // var doors = currentLevel.GetEntities<LDtkTypes.Door>();
+        // foreach (var door in doors)
+        // {
+        //     var newDoor = new Door(door, region);
+        //     newDoor.Load(spriteBatch);
+        //     entities.Add(newDoor);
+        // }
 
-        var worldFile = Content.Load<AsepriteFile>("world");
-        var worldAtlas = worldFile.CreateTextureAtlas(
-            GraphicsDevice,
-            layers: worldFile.Layers.ToArray().Select(l => l.Name).ToList());
-        var worldRegion = worldAtlas.GetRegion("world 0");
-
-        var destructibles = currentLevel.GetEntities<LDtkTypes.Destructible>();
-        foreach (var destructible in destructibles)
-        {
-            var newDestructible = new Destructible(destructible, worldRegion);
-            newDestructible.Load(spriteBatch);
-            entities.Add(newDestructible);
-        }
+        // var worldFile = Content.Load<AsepriteFile>("world");
+        // var worldAtlas = worldFile.CreateTextureAtlas(
+        //     GraphicsDevice,
+        //     layers: worldFile.Layers.ToArray().Select(l => l.Name).ToList());
+        // var worldRegion = worldAtlas.GetRegion("world 0");
+        //
+        // var destructibles = currentLevel.GetEntities<LDtkTypes.Destructible>();
+        // foreach (var destructible in destructibles)
+        // {
+        //     var newDestructible = new Destructible(destructible, worldRegion);
+        //     newDestructible.Load(spriteBatch);
+        //     entities.Add(newDestructible);
+        // }
 
         var file = Content.Load<AsepriteFile>("entities");
         var spriteSheet = file.CreateSpriteSheet(GraphicsDevice, onlyVisibleLayers: true);
@@ -99,8 +128,10 @@ public class TenJutsuGame : Game
 
         foreach (var entity in entities)
         {
-            entity.Update(gameTime, collisions, entities);
+            entity.Update(gameTime);
         }
+
+        physicsWorld.Step((float)gameTime.ElapsedGameTime.TotalSeconds);
 
         var cameraMinX = currentLevel.WorldX + (GraphicsDevice.Viewport.Width / 2f / pixelScale);
         var cameraMaxX = currentLevel.WorldX + currentLevel.PxWid - (GraphicsDevice.Viewport.Width / 2f / pixelScale);
@@ -138,6 +169,21 @@ public class TenJutsuGame : Game
             entity.Draw(gameTime);
         }
 
+        foreach (var x in physicsWorld.BodyList)
+        {
+            if (x.FixtureList[0].Shape is PolygonShape s)
+            {
+                var _texture = new Texture2D(GraphicsDevice, 1, 1);
+                _texture.SetData([Color.Red]);
+                spriteBatch.Draw(
+                    _texture,
+                    new Rectangle(
+                        new Point((int)x.Position.X, (int)x.Position.Y),
+                        new Point((int)s.Vertices.GetAABB().Extents.X * 2, (int)s.Vertices.GetAABB().Extents.Y * 2)),
+                    Color.White);
+            }
+        }
+
         spriteBatch.End();
 
         base.Draw(gameTime);
@@ -149,7 +195,7 @@ internal abstract class Entity
     public abstract Rectangle? HitBox { get; }
     protected float Depth => HitBox?.Bottom / 1000f ?? 1f;
 
-    public abstract void Update(GameTime gameTime, LDtkIntGrid collisions, List<Entity> entities);
+    public abstract void Update(GameTime gameTime);
 
     public abstract void Draw(GameTime gameTime);
 }
@@ -176,7 +222,7 @@ internal class Destructible(LDtkTypes.Destructible destructible, TextureRegion r
         _spriteBatch = spriteBatch;
     }
 
-    public override void Update(GameTime gameTime, LDtkIntGrid collisions, List<Entity> entities)
+    public override void Update(GameTime gameTime)
     {
     }
 
@@ -207,7 +253,7 @@ internal class Door(LDtkTypes.Door door, TextureRegion region) : Entity
         _nineSliceSprite = new NineSliceSprite(region, "door");
     }
 
-    public override void Update(GameTime gameTime, LDtkIntGrid collisions, List<Entity> entities)
+    public override void Update(GameTime gameTime)
     {
     }
 

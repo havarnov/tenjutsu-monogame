@@ -9,6 +9,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Aether.Physics2D" Version="2.2.0" />
     <PackageReference Include="LDtkMonogame" Version="1.8.0" />
     <PackageReference Include="LDtkMonogame.ContentPipeline" Version="1.8.0" />
     <PackageReference Include="MonoGame.Aseprite" Version="6.3.0" />
