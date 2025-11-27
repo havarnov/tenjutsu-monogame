@@ -9,6 +9,7 @@ using nkast.Aether.Physics2D.Collision;
 using nkast.Aether.Physics2D.Collision.Shapes;
 using nkast.Aether.Physics2D.Dynamics;
 using TenJutsu;
+using Body = TenJutsu.Body;
 using Vector2 = Microsoft.Xna.Framework.Vector2;
 
 using var game = new TenJutsuGame();
@@ -25,6 +26,7 @@ public class TenJutsuGame : Game
     private Hero _hero = null!;
     private readonly List<Entity> entities = [];
     private World physicsWorld = null!;
+    private BodyFactory factory = null!;
     private bool debug = false;
 
     public TenJutsuGame()
@@ -48,7 +50,7 @@ public class TenJutsuGame : Game
         {
             Gravity = new nkast.Aether.Physics2D.Common.Vector2(0, 0),
         };
-        var factory = new BodyFactory(physicsWorld);
+        factory = new BodyFactory(physicsWorld);
 
         var playerStart = currentLevel.GetEntity<PlayerStart>();
         _hero = new Hero(factory, playerStart.Position);
@@ -66,8 +68,7 @@ public class TenJutsuGame : Game
                         collisions.TileSize,
                         1f,
                         new nkast.Aether.Physics2D.Common.Vector2(collisions.WorldPosition.X, collisions.WorldPosition.Y)
-                        + new nkast.Aether.Physics2D.Common.Vector2((i * collisions.TileSize) + (collisions.TileSize / 2f), (j * collisions.TileSize) + (collisions.TileSize / 2f))
-                        ,
+                        + new nkast.Aether.Physics2D.Common.Vector2((i * collisions.TileSize) + (collisions.TileSize / 2f), (j * collisions.TileSize) + (collisions.TileSize / 2f)),
                         0f,
                         BodyType.Static);
                 }
@@ -94,13 +95,13 @@ public class TenJutsuGame : Game
             layers: tilesFile.Layers.ToArray().Select(l => l.Name).ToList());
         var region = atlas.GetRegion("tiles 0");
 
-        // var doors = currentLevel.GetEntities<LDtkTypes.Door>();
-        // foreach (var door in doors)
-        // {
-        //     var newDoor = new Door(door, region);
-        //     newDoor.Load(spriteBatch);
-        //     entities.Add(newDoor);
-        // }
+        var doors = currentLevel.GetEntities<LDtkTypes.Door>();
+        foreach (var door in doors)
+        {
+            var newDoor = new Door(door, region, factory);
+            newDoor.Load(spriteBatch);
+            entities.Add(newDoor);
+        }
 
         // var worldFile = Content.Load<AsepriteFile>("world");
         // var worldAtlas = worldFile.CreateTextureAtlas(
@@ -191,7 +192,12 @@ public class TenJutsuGame : Game
                             new Point((int)(body.Position.X - aabb.Extents.X), (int)(body.Position.Y - aabb.Extents.Y)),
                             new Point((int)s.Vertices.GetAABB().Extents.X * 2,
                                 (int)s.Vertices.GetAABB().Extents.Y * 2)),
-                        Color.White);
+                        sourceRectangle: null,
+                        Color.White,
+                        rotation: 0,
+                        origin: Vector2.Zero,
+                        effects: SpriteEffects.None,
+                        layerDepth: 0.1f);
                 }
             }
         }
@@ -252,17 +258,35 @@ internal class Destructible(LDtkTypes.Destructible destructible, TextureRegion r
     }
 }
 
-internal class Door(LDtkTypes.Door door, TextureRegion region) : Entity
+internal class Door : Entity
 {
     private SpriteBatch _spriteBatch = null!;
     private NineSliceSprite _nineSliceSprite = null!;
-    private Vector2 _initialPosition = door.Position;
+    private Vector2 _initialPosition;
+    private readonly Body body;
+
+    private readonly LDtkTypes.Door door;
+    private readonly TextureRegion region;
+
+    public Door(LDtkTypes.Door door,
+        TextureRegion region,
+        IBodyFactory bodyFactory)
+    {
+        this.door = door;
+        this.region = region;
+        _initialPosition = door.Position;
+        body = bodyFactory.CreateStatic(
+            door.Position + new Vector2(door.Size.X / 2, door.Size.Y / 2),
+            door.Size,
+            tag: this);
+    }
+
     public override Rectangle? HitBox => new Rectangle(_initialPosition.ToPoint(), door.Size.ToPoint());
 
     public void Load(SpriteBatch spriteBatch)
     {
         _spriteBatch = spriteBatch;
-        _nineSliceSprite = new NineSliceSprite(region, "door");
+        _nineSliceSprite = new NineSliceSprite(region, "door", Depth);
     }
 
     public override void Update(GameTime gameTime)
@@ -285,7 +309,7 @@ internal static class RectangleExtensions
     public static Point BottomRight(this Rectangle rect) => new Point(rect.Right, rect.Bottom);
 }
 
-internal class NineSliceSprite(TextureRegion region, string name)
+internal class NineSliceSprite(TextureRegion region, string name, float depth)
 {
     public void Draw(SpriteBatch spriteBatch, Rectangle destination)
     {
@@ -309,7 +333,11 @@ internal class NineSliceSprite(TextureRegion region, string name)
                 region.Texture,
                 dest,
                 src,
-                Color.White);
+                Color.White,
+                0,
+                Vector2.Zero,
+                SpriteEffects.None,
+                layerDepth: depth);
         }
     }
 }

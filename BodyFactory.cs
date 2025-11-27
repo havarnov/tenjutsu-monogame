@@ -43,20 +43,44 @@ internal class Body
 
 internal interface IBodyFactory
 {
-    Body Create(Microsoft.Xna.Framework.Vector2 position, Microsoft.Xna.Framework.Vector2 size);
+    Body Create(Microsoft.Xna.Framework.Vector2 position, Microsoft.Xna.Framework.Vector2 size, object? tag = null);
+    Body CreateStatic(Microsoft.Xna.Framework.Vector2 position, Microsoft.Xna.Framework.Vector2 size, object? tag = null);
 }
 
 
 internal class BodyFactory(World world) : IBodyFactory
 {
-    public Body Create(Microsoft.Xna.Framework.Vector2 position, Microsoft.Xna.Framework.Vector2 size)
+    public Body CreateStatic(
+        Microsoft.Xna.Framework.Vector2 position,
+        Microsoft.Xna.Framework.Vector2 size,
+        object? tag = null)
+    {
+        return Create(position, size, BodyType.Static, tag);
+    }
+
+    public Body Create(Microsoft.Xna.Framework.Vector2 position, Microsoft.Xna.Framework.Vector2 size, object? tag = null)
+    {
+        return Create(position, size, BodyType.Dynamic, tag);
+    }
+
+    private Body Create(
+        Microsoft.Xna.Framework.Vector2 position,
+        Microsoft.Xna.Framework.Vector2 size,
+        BodyType bodyType,
+        object? tag = null)
     {
         var body = world.CreateBody(
             new Vector2(position.X, position.Y),
             0f,
-            BodyType.Dynamic);
+            bodyType);
 
         body.CreateRectangle(size.X, size.Y, 1f, Vector2.Zero);
+
+        if (tag is not null)
+        {
+            body.Tag = tag;
+        }
+
         return new Body(body);
     }
 }

@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
@@ -5,7 +6,7 @@ using MonoGame.Aseprite;
 
 namespace TenJutsu;
 
-internal class Hero(IBodyFactory bodyFactory, Vector2 initialPosition) : Entity
+internal class Hero : Entity
 {
     private class StateManager
     {
@@ -67,14 +68,20 @@ internal class Hero(IBodyFactory bodyFactory, Vector2 initialPosition) : Entity
     private TextureRegion _region = null!;
     private static Vector2 _size = new Vector2(15f, 5f);
 
-    private readonly Body body = bodyFactory.Create(
-        initialPosition,
-        _size);
+    private readonly Body body;
 
     public Vector2 CurrentPosition => body.Position;
     public override Rectangle? HitBox => new(CurrentPosition.ToPoint(), _size.ToPoint());
 
     private readonly StateManager state = new();
+
+    public Hero(IBodyFactory bodyFactory, Vector2 initialPosition)
+    {
+        body = bodyFactory.Create(
+            initialPosition,
+            _size,
+            this);
+    }
 
     public void Load(
         SpriteSheet spriteSheet,
