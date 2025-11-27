@@ -5,6 +5,7 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using MonoGame.Aseprite;
+using nkast.Aether.Physics2D.Collision;
 using nkast.Aether.Physics2D.Collision.Shapes;
 using nkast.Aether.Physics2D.Dynamics;
 using TenJutsu;
@@ -24,6 +25,7 @@ public class TenJutsuGame : Game
     private Hero _hero = null!;
     private readonly List<Entity> entities = [];
     private World physicsWorld = null!;
+    private bool debug = false;
 
     public TenJutsuGame()
     {
@@ -64,7 +66,8 @@ public class TenJutsuGame : Game
                         collisions.TileSize,
                         1f,
                         new nkast.Aether.Physics2D.Common.Vector2(collisions.WorldPosition.X, collisions.WorldPosition.Y)
-                        + new nkast.Aether.Physics2D.Common.Vector2(i * collisions.TileSize, j * collisions.TileSize),
+                        + new nkast.Aether.Physics2D.Common.Vector2((i * collisions.TileSize) + (collisions.TileSize / 2f), (j * collisions.TileSize) + (collisions.TileSize / 2f))
+                        ,
                         0f,
                         BodyType.Static);
                 }
@@ -124,7 +127,11 @@ public class TenJutsuGame : Game
 
     protected override void Update(GameTime gameTime)
     {
-        var collisions = currentLevel.GetIntGrid("Collisions");
+        KeyboardState keyboard = Keyboard.GetState();
+        if (keyboard.IsKeyDown(Keys.D))
+        {
+            debug = !debug;
+        }
 
         foreach (var entity in entities)
         {
@@ -169,18 +176,23 @@ public class TenJutsuGame : Game
             entity.Draw(gameTime);
         }
 
-        foreach (var x in physicsWorld.BodyList)
+        if (debug)
         {
-            if (x.FixtureList[0].Shape is PolygonShape s)
+            foreach (var body in physicsWorld.BodyList)
             {
-                var _texture = new Texture2D(GraphicsDevice, 1, 1);
-                _texture.SetData([Color.Red]);
-                spriteBatch.Draw(
-                    _texture,
-                    new Rectangle(
-                        new Point((int)x.Position.X, (int)x.Position.Y),
-                        new Point((int)s.Vertices.GetAABB().Extents.X * 2, (int)s.Vertices.GetAABB().Extents.Y * 2)),
-                    Color.White);
+                if (body.FixtureList[0].Shape is PolygonShape s)
+                {
+                    var _texture = new Texture2D(GraphicsDevice, 1, 1);
+                    _texture.SetData([Color.Blue]);
+                    var aabb = s.Vertices.GetAABB();
+                    spriteBatch.Draw(
+                        _texture,
+                        new Rectangle(
+                            new Point((int)(body.Position.X - aabb.Extents.X), (int)(body.Position.Y - aabb.Extents.Y)),
+                            new Point((int)s.Vertices.GetAABB().Extents.X * 2,
+                                (int)s.Vertices.GetAABB().Extents.Y * 2)),
+                        Color.White);
+                }
             }
         }
 

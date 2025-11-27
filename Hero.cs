@@ -65,13 +65,14 @@ internal class Hero(IBodyFactory bodyFactory, Vector2 initialPosition) : Entity
 
     private SpriteBatch _spriteBatch = null!;
     private TextureRegion _region = null!;
+    private static Vector2 _size = new Vector2(15f, 5f);
 
     private readonly Body body = bodyFactory.Create(
         initialPosition,
-        new Vector2(15f, 5f));
+        _size);
 
     public Vector2 CurrentPosition => body.Position;
-    public override Rectangle? HitBox => new(CurrentPosition.ToPoint(), new Point(15, 5));
+    public override Rectangle? HitBox => new(CurrentPosition.ToPoint(), _size.ToPoint());
 
     private readonly StateManager state = new();
 
@@ -101,20 +102,22 @@ internal class Hero(IBodyFactory bodyFactory, Vector2 initialPosition) : Entity
 
         var moveVector = new Vector2(horizontalInput, verticalInput);
         const float speed = 60f;
-        const float damping = 0.05f;
+        const float damping = 4f;
 
-        if (moveVector != Vector2.Zero)
+        if (moveVector == Vector2.Zero)
         {
-            // Player is providing input
-            body.Velocity = Vector2.Normalize(moveVector) * speed;
-        }
-        else if (body.Velocity.Length() > 10f)
-        {
-            body.Velocity -= body.Velocity * damping;
+            if (body.Velocity.LengthSquared() < 0.1)
+            {
+                body.Velocity = Vector2.Zero;
+            }
+            else
+            {
+                body.LinearDamping = damping;
+            }
         }
         else
         {
-            body.Velocity = Vector2.Zero;
+            body.Velocity = moveVector * speed;
         }
 
         state.FacingLeft = body.Velocity.X < 0 || body.Velocity.X == 0f && state.FacingLeft;
@@ -131,7 +134,7 @@ internal class Hero(IBodyFactory bodyFactory, Vector2 initialPosition) : Entity
 
     public override void Draw(GameTime gameTime)
     {
-        var spritePosition = CurrentPosition - new Vector2(10, 20);
+        var spritePosition = CurrentPosition - _size - new Vector2(1, 17);
         var groundShadowSlice = _region.GetSlice("groundShadow");
         _spriteBatch.Draw(
             _region.Texture,

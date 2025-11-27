@@ -33,6 +33,12 @@ internal class Body
         get => new Microsoft.Xna.Framework.Vector2(_inner.LinearVelocity.X, _inner.LinearVelocity.Y);
         set => _inner.LinearVelocity = new Vector2(value.X, value.Y);
     }
+
+    public float LinearDamping
+    {
+        get => _inner.LinearDamping;
+        set => _inner.LinearDamping = value;
+    }
 }
 
 internal interface IBodyFactory
