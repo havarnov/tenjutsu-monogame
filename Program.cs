@@ -5,11 +5,9 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using MonoGame.Aseprite;
-using nkast.Aether.Physics2D.Collision;
 using nkast.Aether.Physics2D.Collision.Shapes;
 using nkast.Aether.Physics2D.Dynamics;
 using TenJutsu;
-using Body = TenJutsu.Body;
 using Vector2 = Microsoft.Xna.Framework.Vector2;
 
 using var game = new TenJutsuGame();
@@ -26,7 +24,6 @@ public class TenJutsuGame : Game
     private Hero _hero = null!;
     private readonly List<Entity> entities = [];
     private World physicsWorld = null!;
-    private BodyFactory factory = null!;
     private bool debug = false;
 
     public TenJutsuGame()
@@ -50,10 +47,9 @@ public class TenJutsuGame : Game
         {
             Gravity = new nkast.Aether.Physics2D.Common.Vector2(0, 0),
         };
-        factory = new BodyFactory(physicsWorld);
 
         var playerStart = currentLevel.GetEntity<PlayerStart>();
-        _hero = new Hero(factory, playerStart.Position);
+        _hero = new Hero(physicsWorld, playerStart.Position);
         entities.Add(_hero);
 
         var collisions = currentLevel.GetIntGrid("Collisions");
@@ -98,7 +94,7 @@ public class TenJutsuGame : Game
         var doors = currentLevel.GetEntities<LDtkTypes.Door>();
         foreach (var door in doors)
         {
-            var newDoor = new Door(door, region, factory);
+            var newDoor = new Door(door, region, physicsWorld);
             newDoor.Load(spriteBatch);
             entities.Add(newDoor);
         }
@@ -112,7 +108,7 @@ public class TenJutsuGame : Game
         var destructibles = currentLevel.GetEntities<LDtkTypes.Destructible>();
         foreach (var destructible in destructibles)
         {
-            var newDestructible = new Destructible(destructible, worldRegion, factory);
+            var newDestructible = new Destructible(destructible, worldRegion, physicsWorld);
             newDestructible.Load(spriteBatch);
             entities.Add(newDestructible);
         }
@@ -231,23 +227,23 @@ internal class Destructible : Entity
     public Destructible(
         LDtkTypes.Destructible destructible,
         TextureRegion region,
-        IBodyFactory factory)
+        World world)
     {
         this.destructible = destructible;
         this.region = region;
-        body = factory.Create(
+        var position =
             destructible.Position
             - (destructible.Pivot * destructible.Size)
             + new Vector2(
-                (int)(destructible.tile.W * (sizeWidth/2)),
-                (int)(destructible.tile.H * (1f - sizeHeight))),
-            destructible.Size,
-            tag: this);
+                (int)(destructible.tile.W * (sizeWidth / 2)),
+                (int)(destructible.tile.H * (1f - sizeHeight)));
+        body = world.CreateBody(new nkast.Aether.Physics2D.Common.Vector2(position.X, position.Y), bodyType: BodyType.Dynamic);
+        body.CreateRectangle(destructible.Size.X, destructible.Size.Y, 10f, nkast.Aether.Physics2D.Common.Vector2.Zero);
         body.LinearDamping = 5;
     }
 
     public override Rectangle? HitBox => new Rectangle(
-        body.Position.ToPoint()
+        new Point((int)body.Position.X, (int)body.Position.Y)
         - (destructible.Pivot * destructible.Size).ToPoint()
         + new Point(
             (int)(destructible.tile.W * (sizeWidth/2)),
@@ -270,7 +266,7 @@ internal class Destructible : Entity
         _spriteBatch.Draw(
             region.Texture,
             new Rectangle(
-                body.Position.ToPoint() - (destructible.Pivot * (destructible.Size/2)).ToPoint(),
+                new Point((int)body.Position.X, (int)body.Position.Y) - (destructible.Pivot * (destructible.Size/2)).ToPoint(),
                 new Point(destructible.tile.W, destructible.tile.H)),
             destructible.tile,
             Color.White,
@@ -293,15 +289,16 @@ internal class Door : Entity
 
     public Door(LDtkTypes.Door door,
         TextureRegion region,
-        IBodyFactory bodyFactory)
+        World world)
     {
         this.door = door;
         this.region = region;
         _initialPosition = door.Position;
-        body = bodyFactory.CreateStatic(
-            door.Position + new Vector2(door.Size.X / 2, door.Size.Y / 2),
-            door.Size,
-            tag: this);
+        body = world.CreateBody(
+            new nkast.Aether.Physics2D.Common.Vector2(door.Position.X, door.Position.Y)
+            + new nkast.Aether.Physics2D.Common.Vector2(door.Size.X / 2, door.Size.Y / 2));
+        body.CreateRectangle(door.Size.X, door.Size.Y, 1f, nkast.Aether.Physics2D.Common.Vector2.Zero);
+        body.Tag = this;
     }
 
     public override Rectangle? HitBox => new Rectangle(_initialPosition.ToPoint(), door.Size.ToPoint());

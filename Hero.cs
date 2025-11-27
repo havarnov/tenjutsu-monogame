@@ -3,6 +3,7 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using MonoGame.Aseprite;
+using nkast.Aether.Physics2D.Dynamics;
 
 namespace TenJutsu;
 
@@ -70,17 +71,16 @@ internal class Hero : Entity
 
     private readonly Body body;
 
-    public Vector2 CurrentPosition => body.Position;
+    public Vector2 CurrentPosition => new Vector2(body.Position.X, body.Position.Y);
     public override Rectangle? HitBox => new(CurrentPosition.ToPoint(), _size.ToPoint());
 
     private readonly StateManager state = new();
 
-    public Hero(IBodyFactory bodyFactory, Vector2 initialPosition)
+    public Hero(World world, Vector2 initialPosition)
     {
-        body = bodyFactory.Create(
-            initialPosition,
-            _size,
-            this);
+        body = world.CreateBody(new nkast.Aether.Physics2D.Common.Vector2(initialPosition.X, initialPosition.Y), bodyType: BodyType.Dynamic);
+        body.CreateRectangle(_size.X, _size.Y, 1f, nkast.Aether.Physics2D.Common.Vector2.Zero);
+        body.Tag = this;
     }
 
     public void Load(
@@ -113,9 +113,9 @@ internal class Hero : Entity
 
         if (moveVector == Vector2.Zero)
         {
-            if (body.Velocity.LengthSquared() < 0.1)
+            if (body.LinearVelocity.LengthSquared() < 0.1)
             {
-                body.Velocity = Vector2.Zero;
+                body.LinearVelocity = nkast.Aether.Physics2D.Common.Vector2.Zero;
             }
             else
             {
@@ -124,12 +124,13 @@ internal class Hero : Entity
         }
         else
         {
-            body.Velocity = moveVector * speed;
+            var moveSpeed = moveVector * speed;
+            body.LinearVelocity = new nkast.Aether.Physics2D.Common.Vector2(moveSpeed.X, moveSpeed.Y);
         }
 
-        state.FacingLeft = body.Velocity.X < 0 || body.Velocity.X == 0f && state.FacingLeft;
+        state.FacingLeft = body.LinearVelocity.X < 0 || body.LinearVelocity.X == 0f && state.FacingLeft;
 
-        if (body.Velocity != Vector2.Zero)
+        if (body.LinearVelocity != nkast.Aether.Physics2D.Common.Vector2.Zero)
         {
             state.Current = State.Running;
         }
