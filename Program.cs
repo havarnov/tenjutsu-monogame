@@ -103,19 +103,19 @@ public class TenJutsuGame : Game
             entities.Add(newDoor);
         }
 
-        // var worldFile = Content.Load<AsepriteFile>("world");
-        // var worldAtlas = worldFile.CreateTextureAtlas(
-        //     GraphicsDevice,
-        //     layers: worldFile.Layers.ToArray().Select(l => l.Name).ToList());
-        // var worldRegion = worldAtlas.GetRegion("world 0");
-        //
-        // var destructibles = currentLevel.GetEntities<LDtkTypes.Destructible>();
-        // foreach (var destructible in destructibles)
-        // {
-        //     var newDestructible = new Destructible(destructible, worldRegion);
-        //     newDestructible.Load(spriteBatch);
-        //     entities.Add(newDestructible);
-        // }
+        var worldFile = Content.Load<AsepriteFile>("world");
+        var worldAtlas = worldFile.CreateTextureAtlas(
+            GraphicsDevice,
+            layers: worldFile.Layers.ToArray().Select(l => l.Name).ToList());
+        var worldRegion = worldAtlas.GetRegion("world 0");
+
+        var destructibles = currentLevel.GetEntities<LDtkTypes.Destructible>();
+        foreach (var destructible in destructibles)
+        {
+            var newDestructible = new Destructible(destructible, worldRegion, factory);
+            newDestructible.Load(spriteBatch);
+            entities.Add(newDestructible);
+        }
 
         var file = Content.Load<AsepriteFile>("entities");
         var spriteSheet = file.CreateSpriteSheet(GraphicsDevice, onlyVisibleLayers: true);
@@ -218,15 +218,36 @@ internal abstract class Entity
     public abstract void Draw(GameTime gameTime);
 }
 
-internal class Destructible(LDtkTypes.Destructible destructible, TextureRegion region) : Entity
+internal class Destructible : Entity
 {
     private SpriteBatch _spriteBatch = null!;
 
     private float sizeWidth = 0.4f;
     private float sizeHeight = 0.25f;
+    private readonly LDtkTypes.Destructible destructible;
+    private readonly TextureRegion region;
+    private readonly Body body;
+
+    public Destructible(
+        LDtkTypes.Destructible destructible,
+        TextureRegion region,
+        IBodyFactory factory)
+    {
+        this.destructible = destructible;
+        this.region = region;
+        body = factory.Create(
+            destructible.Position
+            - (destructible.Pivot * destructible.Size)
+            + new Vector2(
+                (int)(destructible.tile.W * (sizeWidth/2)),
+                (int)(destructible.tile.H * (1f - sizeHeight))),
+            destructible.Size,
+            tag: this);
+        body.LinearDamping = 5;
+    }
 
     public override Rectangle? HitBox => new Rectangle(
-        destructible.Position.ToPoint()
+        body.Position.ToPoint()
         - (destructible.Pivot * destructible.Size).ToPoint()
         + new Point(
             (int)(destructible.tile.W * (sizeWidth/2)),
@@ -248,7 +269,9 @@ internal class Destructible(LDtkTypes.Destructible destructible, TextureRegion r
     {
         _spriteBatch.Draw(
             region.Texture,
-            new Rectangle(destructible.Position.ToPoint() - (destructible.Pivot * destructible.Size).ToPoint(), new Point(destructible.tile.W, destructible.tile.H)),
+            new Rectangle(
+                body.Position.ToPoint() - (destructible.Pivot * (destructible.Size/2)).ToPoint(),
+                new Point(destructible.tile.W, destructible.tile.H)),
             destructible.tile,
             Color.White,
             rotation: 0,
@@ -299,14 +322,6 @@ internal class Door : Entity
             _spriteBatch,
             new Rectangle(_initialPosition.ToPoint(), door.Size.ToPoint()));
     }
-}
-
-internal static class RectangleExtensions
-{
-    public static Point TopLeft(this Rectangle rect) => new Point(rect.Left, rect.Top);
-    public static Point TopRight(this Rectangle rect) => new Point(rect.Right, rect.Top);
-    public static Point BottomLeft(this Rectangle rect) => new Point(rect.Left, rect.Bottom);
-    public static Point BottomRight(this Rectangle rect) => new Point(rect.Right, rect.Bottom);
 }
 
 internal class NineSliceSprite(TextureRegion region, string name, float depth)
