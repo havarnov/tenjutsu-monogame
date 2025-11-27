@@ -109,7 +109,7 @@ internal class Hero : Entity
 
         var moveVector = new Vector2(horizontalInput, verticalInput);
         const float speed = 60f;
-        const float damping = 4f;
+        const float damping = 7f;
 
         if (moveVector == Vector2.Zero)
         {
@@ -130,7 +130,8 @@ internal class Hero : Entity
 
         state.FacingLeft = body.LinearVelocity.X < 0 || body.LinearVelocity.X == 0f && state.FacingLeft;
 
-        if (body.LinearVelocity != nkast.Aether.Physics2D.Common.Vector2.Zero)
+        // if (body.LinearVelocity != nkast.Aether.Physics2D.Common.Vector2.Zero)
+        if (moveVector != Vector2.Zero)
         {
             state.Current = State.Running;
         }
