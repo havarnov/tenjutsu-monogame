@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
@@ -31,14 +32,12 @@ internal class Hero : Entity
             }
         }
 
-        private State _current = default;
-
         public State Current
         {
-            get => _current;
+            get;
             set
             {
-                if (value == _current)
+                if (value == field)
                 {
                     return;
                 }
@@ -47,14 +46,25 @@ internal class Hero : Entity
                 _animation = _animations[value];
                 _animation.FlipHorizontally = _facingLeft;
                 _animation.Play();
-                _current = value;
+                field = value;
+
+                if (field is State.PunchACharge)
+                {
+                    Animation.OnFrameEnd += _ =>
+                    {
+                        Current = State.PunchA;
+                        Animation.OnAnimationLoop += _ => { Current = State.Idle; };
+                    };
+                }
             }
-        }
+        } = default;
 
         public void Load(SpriteSheet spriteSheet)
         {
             _animations[State.Idle] = spriteSheet.CreateAnimatedSprite("kIdle");
             _animations[State.Running] = spriteSheet.CreateAnimatedSprite("kRun");
+            _animations[State.PunchACharge] = spriteSheet.CreateAnimatedSprite("kPunchA_charge");
+            _animations[State.PunchA] = spriteSheet.CreateAnimatedSprite("kPunchA_hit");
             Current = State.Idle;
         }
     }
@@ -63,6 +73,8 @@ internal class Hero : Entity
     {
         Idle = 1,
         Running = 2,
+        PunchACharge = 3,
+        PunchA = 4,
     }
 
     private SpriteBatch _spriteBatch = null!;
@@ -93,11 +105,24 @@ internal class Hero : Entity
         state.Load(spriteSheet);
     }
 
+    // private State backTo = State.Idle;
+
     public override void Update(GameTime gameTime)
     {
         state.Animation.Update(gameTime);
 
+        if (state.Current is State.PunchACharge or State.PunchA)
+        {
+            return;
+        }
+
         var keyboardState = Keyboard.GetState();
+
+        if (keyboardState.IsKeyDown(Keys.Space))
+        {
+            state.Current = State.PunchACharge;
+            return;
+        }
 
         var horizontalInput =
             (keyboardState.IsKeyDown(Keys.Left) ? -1 : 0)

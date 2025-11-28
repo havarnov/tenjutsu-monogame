@@ -2,19 +2,16 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>net9.0</TargetFramework>
     <RootNamespace>TenJutsu</RootNamespace>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Aether.Physics2D" Version="2.2.0" />
-    <PackageReference Include="LDtkMonogame" Version="1.8.0" />
-    <PackageReference Include="LDtkMonogame.ContentPipeline" Version="1.8.0" />
-    <PackageReference Include="MonoGame.Aseprite" Version="6.3.0" />
-    <PackageReference Include="MonoGame.Content.Builder.Task" Version="3.8.4" />
-    <PackageReference Include="MonoGame.Framework.DesktopGL" Version="3.8.4" />
+    <PackageReference Include="Aether.Physics2D" />
+    <PackageReference Include="LDtkMonogame" />
+    <PackageReference Include="LDtkMonogame.ContentPipeline" />
+    <PackageReference Include="MonoGame.Aseprite" />
+    <PackageReference Include="MonoGame.Content.Builder.Task" />
+    <PackageReference Include="MonoGame.Framework.DesktopGL" />
   </ItemGroup>
 
   <Target Name="Codegen" BeforeTargets="BeforeBuild">
