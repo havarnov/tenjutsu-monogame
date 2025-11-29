@@ -31,6 +31,7 @@ internal class Destructible : Entity
         body = world.CreateBody(new nkast.Aether.Physics2D.Common.Vector2(position.X, position.Y), bodyType: BodyType.Dynamic);
         body.CreateRectangle(destructible.Size.X, destructible.Size.Y, 10f, nkast.Aether.Physics2D.Common.Vector2.Zero);
         body.LinearDamping = 15;
+        body.Tag = this;
     }
 
     public override Rectangle? HitBox => new Rectangle(

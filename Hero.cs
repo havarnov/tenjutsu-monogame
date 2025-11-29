@@ -1,5 +1,5 @@
+using System;
 using System.Collections.Generic;
-using System.Runtime.CompilerServices;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
@@ -10,11 +10,15 @@ namespace TenJutsu;
 
 internal class Hero : Entity
 {
+    private readonly World _world;
+    private readonly List<Entity> _entities;
+
     private class StateManager
     {
         private readonly Dictionary<State, AnimatedSprite> _animations = [];
 
         private AnimatedSprite? _animation = null;
+
         public AnimatedSprite Animation => _animation!;
 
         private bool _facingLeft = false;
@@ -88,9 +92,11 @@ internal class Hero : Entity
 
     private readonly StateManager state = new();
 
-    public Hero(World world, Vector2 initialPosition)
+    public Hero(World world, Vector2 initialPosition, List<Entity> entities)
     {
-        body = world.CreateBody(new nkast.Aether.Physics2D.Common.Vector2(initialPosition.X, initialPosition.Y), bodyType: BodyType.Dynamic);
+        _world = world;
+        _entities = entities;
+        body = _world.CreateBody(new nkast.Aether.Physics2D.Common.Vector2(initialPosition.X, initialPosition.Y), bodyType: BodyType.Dynamic);
         body.CreateRectangle(_size.X, _size.Y, 1f, nkast.Aether.Physics2D.Common.Vector2.Zero);
         body.Tag = this;
     }
@@ -105,7 +111,7 @@ internal class Hero : Entity
         state.Load(spriteSheet);
     }
 
-    // private State backTo = State.Idle;
+    private bool hit = true;
 
     public override void Update(GameTime gameTime)
     {
@@ -113,8 +119,27 @@ internal class Hero : Entity
 
         if (state.Current is State.PunchACharge or State.PunchA)
         {
+            if (state.Current == State.PunchA && hit)
+            {
+                var from =
+                    new nkast.Aether.Physics2D.Common.Vector2(CurrentPosition.X, CurrentPosition.Y)
+                    + new nkast.Aether.Physics2D.Common.Vector2(state.FacingLeft ? -5 : 5, -9);
+                var to = from + new nkast.Aether.Physics2D.Common.Vector2(state.FacingLeft ? -10 : 10, 0);
+                _world.RayCast(
+                    (fixture, point, _, _) =>
+                    {
+                        Console.WriteLine((fixture.Body.Tag?.GetType().ToString() ?? "N/A") + " " + point);
+                        return 0;
+                    },
+                    from,
+                    to);
+                hit = false;
+            }
+
             return;
         }
+
+        hit = true;
 
         var keyboardState = Keyboard.GetState();
 

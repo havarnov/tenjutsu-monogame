@@ -53,7 +53,7 @@ public class TenJutsuGame : Game
         };
 
         var playerStart = currentLevel.GetEntity<PlayerStart>();
-        _hero = new Hero(physicsWorld, playerStart.Position);
+        _hero = new Hero(physicsWorld, playerStart.Position, entities);
         entities.Add(_hero);
 
         var collisions = currentLevel.GetIntGrid("Collisions");
