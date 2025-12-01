@@ -205,7 +205,7 @@ internal class Hero : Entity
             rotation: 0,
             origin: Vector2.Zero,
             effects: SpriteEffects.None,
-            layerDepth: LayerDepth);
+            layerDepth: LayerDepth - 0.01f);
 
         _spriteBatch.Draw(
             state.Animation.TextureRegion,
