@@ -29,12 +29,12 @@ internal class Door : Entity
         body.Tag = this;
     }
 
-    public override Rectangle? HitBox => new Rectangle(_initialPosition.ToPoint(), door.Size.ToPoint());
+    private float LayerDepth => (body.Position.Y + (door.Size.Y / 2f)) / 1000f;
 
     public void Load(SpriteBatch spriteBatch)
     {
         _spriteBatch = spriteBatch;
-        _nineSliceSprite = new NineSliceSprite(region, "door", Depth);
+        _nineSliceSprite = new NineSliceSprite(region, "door", LayerDepth);
     }
 
     public override void Update(GameTime gameTime)

@@ -25,17 +25,22 @@ public class TenJutsuGame : Game
     private readonly List<Entity> entities = [];
     private World physicsWorld = null!;
     private bool debug = false;
+    private readonly GraphicsDeviceManager _graphics;
 
     public TenJutsuGame()
     {
-        _ = new GraphicsDeviceManager(this);
+        _graphics = new GraphicsDeviceManager(this);
         Content.RootDirectory = "Content";
         IsMouseVisible = false;
     }
 
     protected override void Initialize()
     {
-        pixelScale = Math.Max(GraphicsDevice.Viewport.Height / 160, 1);
+        _graphics.IsFullScreen = false;
+        _graphics.PreferredBackBufferWidth = 1200;
+        _graphics.PreferredBackBufferHeight = 800;
+        _graphics.ApplyChanges();
+        pixelScale = 3;
 
         var worldFile = LDtkFile.FromFile("tenjutsu.ldtk");
         world = worldFile.LoadWorld(Worlds.World.Iid)

@@ -13,7 +13,7 @@ public partial class Destructible : ILDtkEntity
         Identifier = "Destructible",
         Uid = 36,
         Size = new Vector2(16f, 16f),
-        Pivot = new Vector2(0.5f, 1f),
+        Pivot = new Vector2(0.5f, 1.25f),
         Tile = new TilesetRectangle()
         {
             X = 128,

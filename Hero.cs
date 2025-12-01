@@ -88,7 +88,7 @@ internal class Hero : Entity
     private readonly Body body;
 
     public Vector2 CurrentPosition => new Vector2(body.Position.X, body.Position.Y);
-    public override Rectangle? HitBox => new(CurrentPosition.ToPoint(), _size.ToPoint());
+    private float LayerDepth => (body.Position.Y + (_size.Y / 2f)) / 1000f;
 
     private readonly StateManager state = new();
 
@@ -205,7 +205,7 @@ internal class Hero : Entity
             rotation: 0,
             origin: Vector2.Zero,
             effects: SpriteEffects.None,
-            layerDepth: Depth);
+            layerDepth: LayerDepth);
 
         _spriteBatch.Draw(
             state.Animation.TextureRegion,
@@ -215,6 +215,6 @@ internal class Hero : Entity
             Vector2.Zero,
             state.Animation.Scale,
             state.Animation.SpriteEffects,
-            layerDepth: Depth);
+            layerDepth: LayerDepth);
     }
 }

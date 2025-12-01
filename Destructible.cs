@@ -1,3 +1,4 @@
+using System;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using MonoGame.Aseprite;
@@ -9,8 +10,6 @@ internal class Destructible : Entity
 {
     private SpriteBatch _spriteBatch = null!;
 
-    private float sizeWidth = 0.4f;
-    private float sizeHeight = 0.25f;
     private readonly LDtkTypes.Destructible destructible;
     private readonly TextureRegion region;
     private readonly Body body;
@@ -24,25 +23,15 @@ internal class Destructible : Entity
         this.region = region;
         var position =
             destructible.Position
-            - (destructible.Pivot * destructible.Size)
-            + new Vector2(
-                (int)(destructible.tile.W * (sizeWidth / 2)),
-                (int)(destructible.tile.H * (1f - sizeHeight)));
+            + new Vector2(0, -2)
+            + new Vector2(0, destructible.yOff);
         body = world.CreateBody(new nkast.Aether.Physics2D.Common.Vector2(position.X, position.Y), bodyType: BodyType.Dynamic);
-        body.CreateRectangle(destructible.Size.X, destructible.Size.Y, 10f, nkast.Aether.Physics2D.Common.Vector2.Zero);
+        body.CreateRectangle(destructible.Size.X * 0.8f, destructible.Size.Y * 0.4f, 15f, offset: nkast.Aether.Physics2D.Common.Vector2.Zero);
         body.LinearDamping = 15;
         body.Tag = this;
     }
 
-    public override Rectangle? HitBox => new Rectangle(
-        new Point((int)body.Position.X, (int)body.Position.Y)
-        - (destructible.Pivot * destructible.Size).ToPoint()
-        + new Point(
-            (int)(destructible.tile.W * (sizeWidth/2)),
-            (int)(destructible.tile.H * (1f - sizeHeight))),
-        new Point(
-            (int)(destructible.tile.W * (1f - sizeWidth)),
-            (int)(destructible.tile.H * sizeHeight)));
+    private float LayerDepth => (body.Position.Y + (destructible.Size.Y / 2f)) / 1000f;
 
     public void Load(SpriteBatch spriteBatch)
     {
@@ -55,16 +44,20 @@ internal class Destructible : Entity
 
     public override void Draw(GameTime gameTime)
     {
+        var x = (int)Math.Round(body.Position.X);
+        var y = (int)Math.Round(body.Position.Y - 4);
+        var sizeX = (int)Math.Round(destructible.Size.X / 2f);
+        var sizeY = (int)Math.Round(destructible.Size.Y / 2f);
         _spriteBatch.Draw(
             region.Texture,
             new Rectangle(
-                new Point((int)body.Position.X, (int)body.Position.Y) - (destructible.Pivot * (destructible.Size/2)).ToPoint(),
+                new Point(x - sizeX, y - sizeY) + new Point(1, 0),
                 new Point(destructible.tile.W, destructible.tile.H)),
             destructible.tile,
             Color.White,
             rotation: 0,
             origin: Vector2.One,
             effects: SpriteEffects.None,
-            layerDepth: Depth);
+            layerDepth: LayerDepth);
     }
 }
