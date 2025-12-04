@@ -13,6 +13,7 @@ internal class Destructible : Entity
     private readonly LDtkTypes.Destructible destructible;
     private readonly TextureRegion region;
     private readonly Body body;
+    private int health = 10;
 
     public Destructible(
         LDtkTypes.Destructible destructible,
@@ -38,12 +39,34 @@ internal class Destructible : Entity
         _spriteBatch = spriteBatch;
     }
 
+    public override void Hit(Entity hitBy, nkast.Aether.Physics2D.Common.Vector2 point)
+    {
+        Console.WriteLine($"Destructible hit by {hitBy.GetType()} at {point}.");
+
+        if (!destructible.playerDestructible)
+        {
+            return;
+        }
+
+        base.Hit(hitBy, point);
+        health -= 2;
+    }
+
     public override void Update(GameTime gameTime)
     {
+        if (health <= 0)
+        {
+            body.Enabled = false;
+        }
     }
 
     public override void Draw(GameTime gameTime)
     {
+        if (health <= 0)
+        {
+            return;
+        }
+
         var x = (int)Math.Round(body.Position.X);
         var y = (int)Math.Round(body.Position.Y);
         var sizeX = (int)Math.Round(destructible.Size.X / 2f);

@@ -129,6 +129,10 @@ internal class Hero : Entity
                     (fixture, point, _, _) =>
                     {
                         Console.WriteLine((fixture.Body.Tag?.GetType().ToString() ?? "N/A") + " " + point);
+                        if (fixture.Body.Tag is Entity entity)
+                        {
+                            entity.Hit(this, point);
+                        }
                         return 0;
                     },
                     from,
