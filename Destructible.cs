@@ -23,10 +23,10 @@ internal class Destructible : Entity
         this.region = region;
         var position =
             destructible.Position
-            + new Vector2(0, -2)
+            + new Vector2(0, -5)
             + new Vector2(0, destructible.yOff);
         body = world.CreateBody(new nkast.Aether.Physics2D.Common.Vector2(position.X, position.Y), bodyType: BodyType.Dynamic);
-        body.CreateRectangle(destructible.Size.X * 0.8f, destructible.Size.Y * 0.4f, 15f, offset: nkast.Aether.Physics2D.Common.Vector2.Zero);
+        body.CreateRectangle(destructible.Size.X, destructible.Size.Y, 15f, offset: nkast.Aether.Physics2D.Common.Vector2.Zero);
         body.LinearDamping = 15;
         body.Tag = this;
     }
@@ -45,7 +45,7 @@ internal class Destructible : Entity
     public override void Draw(GameTime gameTime)
     {
         var x = (int)Math.Round(body.Position.X);
-        var y = (int)Math.Round(body.Position.Y - 4);
+        var y = (int)Math.Round(body.Position.Y);
         var sizeX = (int)Math.Round(destructible.Size.X / 2f);
         var sizeY = (int)Math.Round(destructible.Size.Y / 2f);
         _spriteBatch.Draw(

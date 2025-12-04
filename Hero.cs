@@ -83,7 +83,7 @@ internal class Hero : Entity
 
     private SpriteBatch _spriteBatch = null!;
     private TextureRegion _region = null!;
-    private static Vector2 _size = new Vector2(15f, 5f);
+    private static Vector2 _size = new Vector2(12f, 12f);
 
     private readonly Body body;
 
@@ -193,7 +193,7 @@ internal class Hero : Entity
 
     public override void Draw(GameTime gameTime)
     {
-        var spritePosition = CurrentPosition - _size - new Vector2(1, 17);
+        var spritePosition = CurrentPosition - _size - new Vector2(3, 5);
         var groundShadowSlice = _region.GetSlice("groundShadow");
         _spriteBatch.Draw(
             _region.Texture,
